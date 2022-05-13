@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+#
+# Displays and sets the default gateway.
+#
+# This script is provided as-is, I am not responsible for any damage this script causes!
+# https://github.com/G3CK0-NL/scripts
+#
+# Created by: G3CK0
+#
+#
+# Usage:
+#   defaultgw           Will display the current default gateway.
+#   defaultgw <IP>      Will set the default gateway to the given IP.
+#   defaultgw eth0      Will set the default gateway to the router on eth0.
+#                       The gateway IP is set to the DNS server defined for the interface (hackhack).
+#
+
+
+# Check if you have godmode (when needed)
+if [ $# -ne 0 ] && [ "$(id -u)" != "0" ]; then
+  echo -e "\e[1;31mThis script must be run as root if you change the default gateway\e[0m"
+  exit 1
+fi
+
+
+# Show ethernet devices
+echo -e "\e[1;37mAvailable connections:\e[0m"
+ip --brief addr show
+
+
+# Show current default gateway(s)
+echo
+echo -e "\e[1;37mCurrent default gateway(s):\e[0m"
+DEFAULT_GWS=$(ip route show | grep default)
+if [ -z "$DEFAULT_GWS" ]; then
+  echo -e "\e[1;33m(no default gateway set)\e[0m"
+else
+  echo "$DEFAULT_GWS"
+fi
+
+
+# Check if we have command-line arguments
+if [ $# -eq 0 ]; then
+  echo
+  echo -e "\e[1;37mUse one of the following commands to change the default gateway:\e[0m"
+  echo -e "\e[1;37m    $0 <IP>\e[0m"
+  echo -e "\e[1;37m    $0 <ETH DEV>\e[0m"
+else
+  # Changing the default gateway
+  echo
+  echo -e "\e[1;37mDeleting all current default routes...\e[0m"
+  ip route flush 0/0
+  
+  # Check if an ethernet device is given
+  ROUTER="$1"
+  if [[ ! $ROUTER =~ "." ]]; then
+    echo -e "\e[1;37mDetermining router IP on eth device \"$1\" (this is set to the DNS server IP - hackhack)...\e[0m"
+    ROUTER=$(nmcli dev show "$1" | grep -F '.DNS[1]' | awk '{print $2}')
+  fi
+
+  # Check if we have something
+  if [ -z "$ROUTER" ]; then
+    echo -e "\e[1;31mRouter IP of ethernet device \"$1\" could not be determined! Is the device up?\e[0m"
+    exit 2
+  fi
+
+  # Set new default gateway
+  echo -e "\e[1;37mSetting default gateway to \"$ROUTER\"...\e[0m"
+  ip route add default via "$ROUTER"
+
+  # Flush the routing cache
+  echo -e "\e[1;37mFlushing cache...\e[0m"
+  ip route flush cache
+
+  # Show new default gateway(s)
+  echo
+  echo -e "\e[1;37mNew default gateway(s):\e[0m"
+  echo -en "\e[1;32m"
+  ip route show | grep default
+  echo -en "\e[0m"
+fi

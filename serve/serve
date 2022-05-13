@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+#
+# Serves the current directory over http
+#
+# This script is provided as-is, I am not responsible for any damage this script causes!
+# https://github.com/G3CK0-NL/scripts
+#
+# Created by: G3CK0
+#
+#
+# Usage:
+#   serve           Will serve the current directory on port 80.
+#   serve 1337      Will serve the current directory on port 1337.
+#
+
+
+# Port to use. Defaults to 80. You can override this with the first argument.
+PORT="${1:-80}"
+
+
+# Show what we serve
+echo -e "\e[1;37mServing the following:\e[0m"
+ls -A --color=auto
+
+
+# Show our IP addresses
+echo -e "\e[1;37mServing on the following addresses:\e[0m"
+for IP in $(ip addr show | grep -P 'inet6?\b' | grep -v 'scope host' | awk '{print $2}' | cut -d/ -f1 | sort)
+do
+  printf " - %-35s %s\n" "$IP" "http://$IP:$PORT/"
+done
+# grep -P 'inet6?\b'
+#   Filter only lines containing IP addresses
+# grep -v 'scope host'
+#   Filter out localhost addresses
+# awk '{print $2}'
+#   Extract the IP address from the line
+# cut -d/ -f1
+#   Remove the subnetmask from the IP
+# sort
+#   Sort the IP addresses
+
+
+# Serve the current folder.
+echo -e "\e[1;37mServing on port $PORT...\e[0m"
+/usr/bin/python3 -m http.server "$PORT"
+# Or use retro python2:
+#/usr/bin/python -m SimpleHTTPServer ${1:-80}
+
+
+# Done!
+echo -e "\e[1;37mTerminated!\e[0m"
+echo

@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+#
+# Text to/from QR tool
+#    - Generate QR code from selected text
+#    - Put text on clipboard from QR code
+#
+# This script is provided as-is, I am not responsible for any damage this script causes!
+# https://github.com/G3CK0-NL/scripts
+#
+# Created by: G3CK0
+#
+#
+# Usage:
+#   qr              Will create a QR code from the clipboard content
+#   qr <text>       Will create a QR code from the text in the argument(s)
+#
+# TODO: implement paste function with webcam.
+#    (for this, you could use a symlink to this script, called qr-paste:
+#    ln -s qr qr-paste
+#
+# Usage:
+#   qr-paste        Will paste QR code content to stdout
+#
+
+
+# Check in which mode we are
+scriptname=`basename "$0"`
+if [ "$scriptname" == "qr-paste" ]; then
+  # paste mode
+
+  # TODO: implement
+  echo "paste mode not implemented yet!"
+  exit 1
+
+  # Obtain QR text
+  data=`echo some qr decoder here`   # zbarcam from package zbar-tools ?
+  echo "$data"
+
+  # Put it on clipboard
+  echo "$data" | xsel --clipboard
+else
+  # copy mode
+  
+  # Check if we have command-line arguments
+  if [ $# -eq 0 ]; then
+      # Get data from selection
+      data=`xsel --clipboard`
+  else
+      # Combine all command-line arguments in 1 string
+      data="'$*'"
+  fi
+  
+  # Generate QR image
+  echo "$data"
+  qrencode -t PNG -s 5 -o /tmp/out.png "$data"
+  
+  # Display it
+  xdg-open /tmp/out.png
+fi

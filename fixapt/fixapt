@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+#
+# Apt healer script
+#
+# This script is provided as-is, I am not responsible for any damage this script causes!
+# https://github.com/G3CK0-NL/scripts
+#
+# Created by: G3CK0
+#
+#
+# Usage:
+#   fixapt
+#
+
+
+# Check if you have godmode
+if [ "$(id -u)" != "0" ]; then
+  echo -e "\e[1;31mThis script must be run as root\e[0m"
+  exit 1
+fi
+
+
+# Check if apt is locked
+if [ -e /var/lib/apt/lists/lock ]
+then
+  echo -e "\e[1;33mWARNING: Make sure there are no package managers running, or you might break more...\e[0m"
+  echo -e "\e[1;33mAre you SURE apt/dpkg/synaptic is not running? Check using 'ps aux'!!!\e[0m"
+  read -p "Press [enter] to continue or Ctrl-C to abort"
+fi
+
+
+# Killing any running managers
+echo -e "\e[1;37mKilling package managers...\e[0m"
+killall apt
+killall apt-get
+killall dpkg
+
+
+# Clearing locks
+echo -e "\e[1;37mDeleting apt locks...\e[0m"
+rm -vf /var/lib/apt/lists/lock
+rm -vf /var/cache/apt/archives/lock
+
+
+# Fixing apt itself
+echo -e "\e[1;37mTrying to fix apt...\e[0m"
+apt-get clean
+apt-get install -y -f
+dpkg --configure -a
+apt-get update -y --fix-missing
+
+
+# Performing cleanup
+echo -e "\e[1;37mCleaning up...\e[0m"
+apt-get clean -y
+apt-get autoclean -y
+apt-get autoremove -y
+
+
+# Install debsums
+echo -e "\e[1;37mApt itself should be ok now, installing debsums...\e[0m"
+apt-get install -y debsums
+
+
+# Find corrupted packages
+echo -e "\e[1;37mTrying to find corrupted/missing files owned by packages (this will take a while)...\e[0m"
+# Debsums will output as follows:
+#  - changed file: full path to stdout		/usr/share/vim/vim80/debian.vim
+#  - missing file: error string to stderr	debsums: missing file /usr/share/vim/vim80/debian.vim (from vim-tiny package)
+# using cut to get the fourth item, if its not there (the case with changed files), cut returns the full string.
+BROKEN_FILES=`debsums -c 2>&1 | cut -d' ' -f4`
+if [ ! -z "${BROKEN_FILES}" ]
+then
+  echo "Found corrupted and/or missing files, package(s) involved:"
+  BROKEN_PACKAGES=`dpkg -S ${BROKEN_FILES} | cut -d':' -f1 | sort -u`
+  echo "${BROKEN_PACKAGES}"
+  echo "Reinstalling these packages..."
+  apt-get install -f --reinstall ${BROKEN_PACKAGES}
+fi
+
+
+# Done!
+echo -e "\e[1;37mDone!\e[0m"
+echo

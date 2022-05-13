@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+#
+# (re)sign the VMWare kernel modules when secure boot is enabled.
+#
+# This script is provided as-is, I am not responsible for any damage this script causes!
+# https://github.com/G3CK0-NL/scripts
+#
+# Created by: G3CK0
+#
+#
+# Usage:
+#   fixvmware       Will try to resign the vmmon and vmnet kernel modules.
+#
+
+
+# Check if you have godmode
+if [ "$(id -u)" != "0" ]; then
+  echo -e "\e[1;31mThis script must be run as root\e[0m"
+  exit 1
+fi
+
+
+# Add default MOK key (not needed normally)
+echo -e "\e[1;37mAdding default MOK key...\e[0m"
+echo -e "\e[1;33mNOTICE: Skipped: this is not needed normally. Uncomment if needed.\e[0m"
+#mokutil --import /var/lib/shim-signed/mok/MOK.der
+
+
+# Sometimes /lib/modules/.../misc/vmmon.ko and vmnet.ko do not exist... To compile:
+echo -e "\e[1;37mRecompiling vmmon and vmnet kernel modules...\e[0m"
+vmware-modconfig --console --install-all
+
+
+# (re)sign the vmware modules
+echo -e "\e[1;37mSigning the compiled kernel modules...\e[0m"
+kmodsign sha512 /var/lib/shim-signed/mok/MOK.priv /var/lib/shim-signed/mok/MOK.der /lib/modules/$(uname -r)/misc/vmmon.ko
+kmodsign sha512 /var/lib/shim-signed/mok/MOK.priv /var/lib/shim-signed/mok/MOK.der /lib/modules/$(uname -r)/misc/vmnet.ko
+
+
+# Add the modules again
+echo -e "\e[1;37mAdding modules...\e[0m"
+modprobe vmmon
+modprobe vmnet
+
+
+# Check if they are loaded
+echo -e "\e[1;37mCheck if modules are loaded...\e[0m"
+lsmod | grep '^vm[mn]'
+
+
+# Warn for reboot
+echo -e "\e[1;33mNOTICE: VMWare might run now but you might need to reboot before networking is actually working !!!\e[0m"
+
+
+# Done!
+echo -e "\e[1;37mDone!\e[0m"
+echo
